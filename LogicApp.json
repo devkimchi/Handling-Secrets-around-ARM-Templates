@@ -1,0 +1,101 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the Logic App."
+      },
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "keyVaultSecretValue": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Value of the secret from Key Vault."
+      }
+    }
+  },
+  "variables": {
+    "logicApp": {
+      "name": "[parameters('logicAppName')]",
+      "apiVersion": "[providers('Microsoft.Logic', 'workflows').apiVersions[0]]",
+      "location": "[parameters('location')]"
+    },
+    "keyVault": {
+      "secrets": {
+        "value": "[parameters('keyVaultSecretValue')]"
+      }
+    },
+    "tags": {
+      "author": "Justin Yoo",
+      "profile": "https://twitter.com/justinchronicle",
+      "projectUrl": "https://github.com/devkimchi/Handling-Secrets-around-ARM-Templates",
+      "repositoryUrl": "https://github.com/devkimchi/Handling-Secrets-around-ARM-Templates",
+      "license": "https://raw.githubusercontent.com/devkimchi/Handling-Secrets-around-ARM-Templates/master/LICENSE"
+    }
+  },
+  "resources": [
+    {
+      "comments": "### RESOURCE - LOGIC APP ###",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "[variables('logicApp').apiVersion]",
+      "location": "[variables('logicApp').location]",
+      "name": "[variables('logicApp').name]",
+      "tags": "[variables('tags')]",
+      "properties": {
+        "parameters": {
+          "keyVault": {
+            "value": {
+              "secrets": {
+                "value": "[variables('keyVault').secrets.value]"
+              }
+            }
+          }
+        },
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "keyVault": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "method": "POST",
+                "schema": {}
+              }
+            }
+          },
+          "actions": {
+            "Compose": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": {
+                "secretValue": "@parameters('keyVault').secrets.value"
+              }
+            }
+          },
+          "outputs": {}
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "logicAppName": {
+      "type": "string",
+      "value": "[variables('logicApp').name]"
+    }
+  }
+}

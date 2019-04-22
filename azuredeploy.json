@@ -1,0 +1,101 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "The region where resources are deployed"
+      },
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Key Vault."
+      }
+    },
+    "keyVaultSecretName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of Key Vault secret."
+      }
+    },
+    "linkedTemplatesBranch": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub branch name to use the linked templates."
+      },
+      "allowedValues": [
+        "master",
+        "dev"
+      ],
+      "defaultValue": "master"
+    }
+  },
+  "variables": {
+    "linked": {
+      "apiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
+      "templateLink": {
+        "uri": "[replace('https://raw.githubusercontent.com/devkimchi/Handling-Secrets-around-ARM-Templates/{0}/{1}.json', '{0}', parameters('linkedTemplatesBranch'))]"
+      }
+    },
+    "logicApp": {
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('location')]"
+    },
+    "keyVault": {
+      "resourceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "secrets": {
+        "name": "[parameters('keyVaultSecretName')]"
+      }
+    },
+    "deployments": {
+      "logicApp": "[concat('logicapp-', guid(resourceGroup().id, deployment().name))]"
+    },
+    "tags": {
+      "author": "Justin Yoo",
+      "profile": "https://twitter.com/justinchronicle",
+      "projectUrl": "https://github.com/devkimchi/Handling-Secrets-around-ARM-Templates",
+      "repositoryUrl": "https://github.com/devkimchi/Handling-Secrets-around-ARM-Templates",
+      "license": "https://raw.githubusercontent.com/devkimchi/Handling-Secrets-around-ARM-Templates/master/LICENSE"
+    }
+  },
+  "resources": [
+    {
+      "comments": "### RESOURCE - LOGIC APP ###",
+      "apiVersion": "[variables('linked').apiVersion]",
+      "type": "Microsoft.Resources/deployments",
+      "name": "[variables('deployments').logicApp]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[replace(variables('linked').templateLink.uri, '{1}', 'LogicApp')]"
+        },
+        "parameters": {
+          "location": {
+            "value": "[variables('logicApp').location]"
+          },
+          "logicAppName": {
+            "value": "[variables('logicApp').name]"
+          },
+          "keyVaultSecretValue": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('keyVault').resourceId]"
+              },
+              "secretName": "[variables('keyVault').secrets.name]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
